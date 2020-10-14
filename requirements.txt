@@ -1,0 +1,5 @@
+# Requirements for clackbot-qdb=api
+
+flask
+python-dotenv
+psycopg2-binary

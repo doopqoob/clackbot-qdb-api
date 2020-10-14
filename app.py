@@ -71,8 +71,6 @@ def init_db():
         return message, 403
 
 
-
-
 if __name__ == '__main__':
     load_dotenv()
     app.run()
