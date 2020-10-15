@@ -70,6 +70,28 @@ def get_quote():
         return message, 404
 
 
+@app.route('/addvotemessage')
+def add_vote_message():
+    message_id = request.args.get('message_id')
+    quote_id = request.args.get('quote_id')
+
+    if not message_id:
+        message = {"message": "Message ID not supplied"}
+        return message, 500
+
+    if not quote_id:
+        message = {"message": "Quote ID not supplied"}
+        return message, 500
+
+    status = postgres.add_quote_message(message_id, quote_id)
+
+    if not status:
+        message = {"message": "Something went wrong adding your message"}
+        return message, 500
+
+    message = {"message": "Success!"}
+    return message, 201
+
 @app.route('/vote', methods=['POST'])
 def vote():
     """Vote on a quote"""
