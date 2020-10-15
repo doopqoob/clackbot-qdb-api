@@ -58,19 +58,20 @@ def get_quote():
         return message, 404
 
 
-@app.route('/initdb')
-def init_db():
-    DB_INIT_KEY = os.getenv('DB_INIT_KEY')
-    user_init_key = request.args.get('key')
-    if DB_INIT_KEY == user_init_key:
-        postgres.init_db()
-        message = {"message": "Success!"}
-        return message, 201
-    else:
-        message = {"message": "Unauthorized"}
-        return message, 403
+# @app.route('/initdb')
+# def init_db():
+#     DB_INIT_KEY = os.getenv('DB_INIT_KEY')
+#     user_init_key = request.args.get('key')
+#     if DB_INIT_KEY == user_init_key:
+#         postgres.init_db()
+#         message = {"message": "Success!"}
+#         return message, 201
+#     else:
+#         message = {"message": "Unauthorized"}
+#         return message, 403
 
 
 if __name__ == '__main__':
     load_dotenv()
+    postgres.init_db()
     app.run()
