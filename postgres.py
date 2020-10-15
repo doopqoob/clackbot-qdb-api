@@ -16,8 +16,7 @@ def connect_db():
         db = psycopg2.connect(host=DB_HOST,
                               dbname='clackbot-quotes',
                               user=DB_USER,
-                              password=DB_PASSWORD,
-                              sslmode='require')
+                              password=DB_PASSWORD)
     except psycopg2.Error as error:
         print(f'Error connecting to db: {error}')
         return None
