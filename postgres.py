@@ -253,10 +253,15 @@ def add_quote(quote):
 
 def get_quote(quote_id):
     """get a quote by id"""
-    try:
-        UUID(quote_id, version=4)
-    except ValueError:
-        return False
+    # check quote_id to ensure it's a uuid
+    if isinstance(quote_id, str):
+        try:
+            UUID(quote_id, version=4)
+        except ValueError:
+            return False
+
+        # convert quote_id from string to uuid
+        quote_id = UUID(quote_id, version=4)
 
     # Connect to the DB
     db = connect_db()
