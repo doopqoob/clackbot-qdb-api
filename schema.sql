@@ -19,3 +19,11 @@ CREATE TABLE IF NOT EXISTS quote_content(
     line_number smallint not null,
     line text not null
 );
+
+CREATE TABLE IF NOT EXISTS quote_vote(
+    id uuid not null primary key default gen_random_uuid(),
+    quote_id uuid not null REFERENCES quote_metadata(id) ON DELETE CASCADE,
+    vote smallint NOT NULL,
+    voter numeric not null REFERENCES discord_user(id),
+    CONSTRAINT vote_record UNIQUE (quote_id,voter)
+);

@@ -131,12 +131,12 @@ def get_user_info(user_id):
     user = None
 
     for row in rows:
-        id = int(row['id'])
+        quote_id = int(row['id'])
 
-        if id != user_id:
+        if quote_id != user_id:
             continue
 
-        user = {"id": id,
+        user = {"id": quote_id,
                 "handle": row['handle'],
                 "discriminator": row['discriminator']}
 
@@ -195,10 +195,10 @@ def add_quote_metadata(quote):
     return id
 
 
-def add_quote_content(id, quote):
+def add_quote_content(quote_id, quote):
     """Adds actual quote content to db given the id from add_quote_metadata and the quote data structure."""
     # Test the id to make sure it's a valid uuid
-    print(type(id))
+    print(type(quote_id))
 
     # Connect to the DB
     db = connect_db()
@@ -213,7 +213,7 @@ def add_quote_content(id, quote):
 
     # Insert the individual lines in the order they were received
     for line_number, line in enumerate(quote['quote']):
-        data = (id, line_number, line)
+        data = (quote_id, line_number, line)
         try:
             cursor.execute(query, data)
         except psycopg2.Error as error:
@@ -239,32 +239,32 @@ def add_quote(quote):
     """Inserts a quote into the database."""
     print(quote)
     print(type(quote))
-    id = add_quote_metadata(quote)
-    if not id:
+    quote_id = add_quote_metadata(quote)
+    if not quote_id:
         return False
 
-    result = add_quote_content(id, quote)
+    result = add_quote_content(quote_id, quote)
     if not result:
         return False
 
     # Well, that was easy!
-    return id
+    return quote_id
 
 
-def get_quote(id):
+def get_quote(quote_id):
     """get a quote by id"""
+    try:
+        UUID(quote_id, version=4)
+    except ValueError:
+        return False
 
     # Connect to the DB
     db = connect_db()
     if not db:
         return False
 
-    if not id:
-        return False
-
     # Get a cursor for data insertion
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    # cursor = db.cursor()
 
     # Build the query
     query = "SELECT *, " \
@@ -281,7 +281,7 @@ def get_quote(id):
             "WHERE quote_metadata.visible = true AND quote_metadata.id = %s " \
             "ORDER BY qc.line_number"
 
-    data = (id,)
+    data = (quote_id,)
 
     # Execute the query
     try:
@@ -295,7 +295,7 @@ def get_quote(id):
     rows = cursor.fetchall()
 
     # Start building the quote structure
-    quote = {"id": id}
+    quote = {"id": quote_id}
 
     # iterate through all rows returned by the db
     for row in rows:
@@ -320,7 +320,21 @@ def get_quote(id):
         quote['quote'].append(row['line'])
 
     if 'quote' not in quote:
-        quote = None
+        return None
+
+    # Get quote's score
+    query = "SELECT COALESCE(SUM(vote),0) AS score FROM quote_vote WHERE quote_id = %s"
+    data = (quote_id,)
+
+    # Execute the query
+    try:
+        cursor.execute(query, data)
+    except psycopg2.Error as error:
+        print(f'Error executing SQL query: {error}')
+        db.close()
+        return False
+
+    quote['score'] = cursor.fetchone()['score']
 
     return quote
 
@@ -374,7 +388,7 @@ def del_quote(quote_id):
     # Verify that id is a uuid
     try:
         UUID(quote_id, version=4)
-    except:
+    except ValueError:
         return False
 
     # convert quote_id from string to uuid
@@ -395,6 +409,85 @@ def del_quote(quote_id):
     # an administrator can manually undelete if necessary
     query = "UPDATE quote_metadata SET visible = false WHERE id = %s"
     data = (quote_id,)
+
+    # Execute the query
+    try:
+        cursor.execute(query, data)
+    except psycopg2.Error as error:
+        print(f'Error executing SQL query: {error}')
+        db.close()
+        return False
+
+    # Commit changes
+    try:
+        db.commit()
+    except psycopg2.Error as error:
+        print(f'Error committing changes to DB: {error}')
+        db.close()
+        return False
+
+    # Success!
+    db.close()
+    return True
+
+
+def vote(ballot):
+    """Vote on a quote. The single argument 'ballot' is a data structure like so:
+    {
+        "quote_id": uuid (string)
+        "voter_id": {
+            "id": int
+            "handle": string
+            "discriminator": int
+        }
+        "vote": int
+    }
+    """
+
+    # Verify that quote is a valid uuid
+    try:
+        UUID(ballot['quote_id'], version=4)
+    except ValueError:
+        return False
+
+    # convert quote_id from string to uuid
+    ballot['quote_id'] = UUID(ballot['quote_id'], version=4)
+
+    # integerize vote in case someone submits a float quote vote somehow
+    ballot['vote'] = int(ballot['vote'])
+
+    # reduce votes to -1, 0, or 1 so that someone can't stuff the ballot box by submitting a
+    # vote of, oh, let's say 2147483647.
+    if ballot['vote'] > 1:
+        ballot['vote'] = 1
+
+    elif ballot['vote'] < -1:
+        ballot['vote'] = -1
+
+    # add voter to db so they can be referenced by the quote_vote table
+    status = add_user_info(ballot['voter_id'])
+    if not status:
+        # something went wrong if this executes
+        return False
+
+    # Add quote to db.
+    # The db schema contains a unique constraint preventing any user from voting more than once on the same quote,
+    # so there's no need to check that here.
+    db = connect_db()
+
+    if not db:
+        return False
+
+    # Get a cursor for data insertion
+    cursor = db.cursor()
+
+    # This must be called to be able to work with UUID objects in postgres for some reason
+    psycopg2.extras.register_uuid()
+
+    # Build the query, allowing a user to update their vote (from downvote to upvote, or to 0 if so desired)
+    query = "INSERT INTO quote_vote (quote_id, vote, voter) VALUES (%s, %s, %s) " \
+            "ON CONFLICT ON CONSTRAINT vote_record DO UPDATE SET vote = %s WHERE quote_id = %s AND voter = %s"
+    data = (ballot['quote_id'], ballot['vote'], ballot['voter'], ballot['vote'], ballot['quote_id'], ballot['voter'])
 
     # Execute the query
     try:
