@@ -436,6 +436,55 @@ def del_quote(quote_id):
     return True
 
 
+def add_quote_message(message_id, quote_id):
+    """After sending a quote to a channel, make a note of the message ID to track up- and down-votes"""
+    if isinstance(quote_id, str):
+        try:
+            UUID(quote_id, version=4)
+        except ValueError:
+            return False
+
+        # convert quote_id from string to uuid
+        quote_id = UUID(quote_id, version=4)
+
+    if not isinstance(message_id, int):
+        return False
+
+    db = connect_db()
+    if not db:
+        return False
+
+    # Get a cursor for data insertion
+    cursor = db.cursor()
+
+    # This must be called to be able to work with UUID objects in postgres for some reason
+    psycopg2.extras.register_uuid()
+
+    # Build the query
+    query = "INSERT INTO quote_message (id, quote_id) VALUES (%s, %s)"
+    data = (message_id, quote_id)
+
+    # Execute the query
+    try:
+        cursor.execute(query, data)
+    except psycopg2.Error as error:
+        print(f'Error executing SQL query: {error}')
+        db.close()
+        return False
+
+    # Commit changes
+    try:
+        db.commit()
+    except psycopg2.Error as error:
+        print(f'Error committing changes to DB: {error}')
+        db.close()
+        return False
+
+    # Success!
+    db.close()
+    return True
+
+
 def vote(ballot):
     """Vote on a quote. The single argument 'ballot' is a data structure like so:
     {

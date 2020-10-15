@@ -27,3 +27,8 @@ CREATE TABLE IF NOT EXISTS quote_vote(
     voter numeric not null REFERENCES discord_user(id),
     CONSTRAINT vote_record UNIQUE (quote_id,voter)
 );
+
+CREATE TABLE IF NOT EXISTS quote_message(
+    id numeric not null primary key,
+    quote_id uuid not null references quote_metadata(id) ON DELETE CASCADE
+);
