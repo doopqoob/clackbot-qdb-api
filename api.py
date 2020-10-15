@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 app = Flask(__name__)
 
 
+@app.before_first_request()
+def init_db():
+    postgres.init_db()
+
+
 @app.route('/')
 def hello_world():
     return 'Hello World!', 200
@@ -72,6 +77,4 @@ def get_quote():
 
 
 if __name__ == '__main__':
-    load_dotenv()
-    postgres.init_db()
     app.run()
