@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 app = Flask(__name__)
 
 
-@app.before_first_request()
+@app.before_first_request
 def init_db():
     postgres.init_db()
 
