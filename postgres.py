@@ -198,7 +198,7 @@ def add_quote_metadata(quote):
 def add_quote_content(quote_id, quote):
     """Adds actual quote content to db given the id from add_quote_metadata and the quote data structure."""
     # Test the id to make sure it's a valid uuid
-    print(type(quote_id))
+
 
     # Connect to the DB
     db = connect_db()
@@ -485,10 +485,47 @@ def add_quote_message(message_id, quote_id):
     return True
 
 
+def get_quote_id(message_id):
+    """Given a numeric message ID, return ID of the associated quote"""
+    if not isinstance(message_id, int):
+        return False
+
+    db = connect_db()
+    if not db:
+        return False
+
+    # Get a cursor for data insertion
+    cursor = db.cursor()
+
+    # This must be called to be able to work with UUID objects in postgres for some reason
+    psycopg2.extras.register_uuid()
+
+    query = "SELECT quote_id FROM quote_message WHERE id = %s"
+    data = (message_id,)
+
+    # Execute the query
+    try:
+        cursor.execute(query, data)
+    except psycopg2.Error as error:
+        print(f'Error executing SQL query: {error}')
+        db.close()
+        return False
+
+    # Get one row from the DB. If there are no rows in the DB, this will return None.
+    quote_id = cursor.fetchone()
+
+    if quote_id is None:
+        return False
+
+    # Close the DB connection and return the ID
+    db.close()
+    return quote_id[0]
+
+
 def vote(ballot):
     """Vote on a quote. The single argument 'ballot' is a data structure like so:
     {
-        "quote_id": uuid (string)
+        "message_id": int
         "voter_id": {
             "id": int
             "handle": string
@@ -497,15 +534,15 @@ def vote(ballot):
         "vote": int
     }
     """
-
-    # Verify that quote is a valid uuid
-    try:
-        UUID(ballot['quote_id'], version=4)
-    except ValueError:
+    # check message id to be sure it's an integer
+    if not isinstance(ballot['message_id'], int):
         return False
 
-    # convert quote_id from string to uuid
-    ballot['quote_id'] = UUID(ballot['quote_id'], version=4)
+    # get quote ID from message ID
+    quote_id = get_quote_id(ballot['message_id'])
+
+    if not quote_id:
+        return False
 
     # integerize vote in case someone submits a float quote vote somehow
     ballot['vote'] = int(ballot['vote'])
@@ -541,7 +578,7 @@ def vote(ballot):
     # Build the query, allowing a user to update their vote (from downvote to upvote, or to 0 if so desired)
     query = "INSERT INTO quote_vote (quote_id, vote, voter) VALUES (%s, %s, %s) " \
             "ON CONFLICT ON CONSTRAINT vote_record DO UPDATE SET vote = %s WHERE quote_id = %s AND voter = %s"
-    data = (ballot['quote_id'], ballot['vote'], ballot['voter'], ballot['vote'], ballot['quote_id'], ballot['voter'])
+    data = (quote_id, ballot['vote'], ballot['voter'], ballot['vote'], quote_id, ballot['voter'])
 
     # Execute the query
     try:

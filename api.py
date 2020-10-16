@@ -72,7 +72,7 @@ def get_quote():
 
 @app.route('/addvotemessage')
 def add_vote_message():
-    message_id = request.args.get('message_id')
+    message_id = int(request.args.get('message_id'))
     quote_id = request.args.get('quote_id')
 
     if not message_id:
@@ -102,8 +102,8 @@ def vote():
         message = {"message": "Ballot not supplied"}
         return message, 500
 
-    if not ballot['quote_id']:
-        message = {"message": "Quote ID not supplied"}
+    if not ballot['message_id']:
+        message = {"message": "Message ID not supplied"}
         return message, 500
 
     if not ballot['voter']:
