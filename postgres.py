@@ -82,11 +82,11 @@ def insert(query, data, return_inserted_row_id=False):
     # Success!
     if return_inserted_row_id:
         # get the id of the newly-created row
-        id = cursor.fetchone()[0]
+        row_id = cursor.fetchone()[0]
 
         # close the database connection and return the id
         db.close()
-        return id
+        return row_id
     else:
         db.close()
         return True
@@ -98,8 +98,7 @@ def select(query, data=None, real_dict_cursor=False):
     if not db:
         return None
 
-    # Get a cursor for data insertion
-    cursor = None
+    # Get a cursor for data selection
     if real_dict_cursor:
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     else:
@@ -204,10 +203,10 @@ def add_quote_metadata(quote):
     data = (quote['said_by']['id'], quote['added_by']['id'])
 
     # insert the data
-    id = insert(query, data, return_inserted_row_id=True)
+    row_id = insert(query, data, return_inserted_row_id=True)
 
-    if id:
-        return id
+    if row_id:
+        return row_id
     else:
         return False
 
@@ -215,7 +214,6 @@ def add_quote_metadata(quote):
 def add_quote_content(quote_id, quote):
     """Adds actual quote content to db given the id from add_quote_metadata and the quote data structure."""
     # Test the id to make sure it's a valid uuid
-
 
     # Build the query
     query = "INSERT INTO quote_content (id, line_number, line) VALUES (%s, %s, %s)"
@@ -332,7 +330,7 @@ def get_random_quote_id():
 
 def get_random_quote():
     """get a quote at random from the db"""
-     # get a random quote id
+    # get a random quote id
     quote_id = get_random_quote_id()
     quote = get_quote(quote_id)
     return quote
