@@ -92,6 +92,7 @@ def add_vote_message():
     message = {"message": "Success!"}
     return message, 201
 
+
 @app.route('/vote', methods=['POST'])
 def vote():
     """Vote on a quote"""
@@ -106,7 +107,7 @@ def vote():
         message = {"message": "Message ID not supplied"}
         return message, 500
 
-    if not ballot['voter']:
+    if not ballot['voter_id']:
         message = {"message": "Voter ID not supplied"}
         return message, 500
 

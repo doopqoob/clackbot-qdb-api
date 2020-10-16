@@ -578,7 +578,7 @@ def vote(ballot):
     # Build the query, allowing a user to update their vote (from downvote to upvote, or to 0 if so desired)
     query = "INSERT INTO quote_vote (quote_id, vote, voter) VALUES (%s, %s, %s) " \
             "ON CONFLICT ON CONSTRAINT vote_record DO UPDATE SET vote = %s WHERE quote_id = %s AND voter = %s"
-    data = (quote_id, ballot['vote'], ballot['voter'], ballot['vote'], quote_id, ballot['voter'])
+    data = (quote_id, ballot['vote'], ballot['voter_id']['id'], ballot['vote'], quote_id, ballot['voter_id']['id'])
 
     # Execute the query
     try:
